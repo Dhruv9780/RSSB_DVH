@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
+import { PwaInstallButton } from './pwa-install-button';
 import { useAuth } from '../state/auth-context';
 
 const drawerWidth = 250;
@@ -54,6 +55,7 @@ export const AppShell = () => {
             Lost &amp; Found Security Portal
           </Typography>
           <Box display="flex" alignItems="center" gap={2}>
+            <PwaInstallButton />
             <Typography variant="body2" color="text.secondary">
               {user?.fullName ?? user?.username}
             </Typography>
