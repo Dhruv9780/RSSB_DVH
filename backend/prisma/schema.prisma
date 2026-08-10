@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum Role {
+  SECURITY_SEWADAR
+  SUPER_ADMIN
+}
+
+enum FoundItemStatus {
+  STORED
+  CLAIMED
+  RETURNED
+  ARCHIVED
+}
+
+enum LostReportStatus {
+  OPEN
+  MATCHED
+  RETURNED
+  CLOSED
+}
+
+enum IncidentPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model User {
+  id               Int           @id @default(autoincrement())
+  username         String        @unique
+  fullName         String
+  phone            String?
+  passwordHash     String
+  role             Role          @default(SECURITY_SEWADAR)
+  isActive         Boolean       @default(true)
+  lastLoginAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  createdFoundItems FoundItem[]
+  createdLostReports LostReport[]
+  createdIncidents Incident[]
+  returnHistory    ReturnHistory[]
+  activityLogs     ActivityLog[]
+
+  @@index([role, isActive])
+}
+
+model Category {
+  id         Int         @id @default(autoincrement())
+  name       String      @unique
+  description String?
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  foundItems FoundItem[]
+  lostReports LostReport[]
+  incidents  Incident[]
+}
+
+model Location {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  foundItems  FoundItem[] @relation("FoundItemLocation")
+  lostReports LostReport[] @relation("LostReportLocation")
+}
+
+model FoundItem {
+  id               Int             @id @default(autoincrement())
+  itemCode         String          @unique
+  categoryId       Int
+  itemName         String
+  description      String?
+  brand            String?
+  color            String?
+  locationFoundId  Int
+  foundAt          DateTime
+  storageLocation  String
+  status           FoundItemStatus @default(STORED)
+  createdById      Int
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  category         Category        @relation(fields: [categoryId], references: [id])
+  locationFound    Location        @relation("FoundItemLocation", fields: [locationFoundId], references: [id])
+  createdBy        User            @relation(fields: [createdById], references: [id])
+  images           FoundItemImage[]
+  returnHistory    ReturnHistory[]
+
+  @@index([itemName, brand, color, status])
+  @@index([categoryId, status])
+  @@index([foundAt])
+}
+
+model FoundItemImage {
+  id          Int      @id @default(autoincrement())
+  foundItemId Int
+  path        String
+  filename    String
+  mimeType    String
+  sizeBytes   Int
+  createdAt   DateTime @default(now())
+  foundItem   FoundItem @relation(fields: [foundItemId], references: [id], onDelete: Cascade)
+
+  @@index([foundItemId])
+}
+
+model LostReport {
+  id                     Int             @id @default(autoincrement())
+  reportCode             String          @unique
+  personName             String
+  phoneNumber            String
+  itemName               String
+  categoryId             Int?
+  brand                  String?
+  color                  String?
+  description            String?
+  specialIdentification  String?
+  approximateValue       Decimal?
+  locationLostId         Int?
+  lostAt                 DateTime
+  status                 LostReportStatus @default(OPEN)
+  photoPath              String?
+  createdById            Int
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  category               Category?       @relation(fields: [categoryId], references: [id])
+  locationLost           Location?       @relation("LostReportLocation", fields: [locationLostId], references: [id])
+  createdBy              User            @relation(fields: [createdById], references: [id])
+  returnHistory          ReturnHistory[]
+
+  @@index([itemName, brand, color, status])
+  @@index([phoneNumber])
+  @@index([lostAt])
+}
+
+model Incident {
+  id               Int              @id @default(autoincrement())
+  incidentCode     String           @unique
+  title            String
+  description      String?
+  categoryId       Int?
+  priority         IncidentPriority @default(MEDIUM)
+  location         String
+  incidentAt       DateTime
+  reporterName     String
+  reporterContact  String
+  status           IncidentStatus   @default(OPEN)
+  createdById      Int
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  category         Category?        @relation(fields: [categoryId], references: [id])
+  createdBy        User             @relation(fields: [createdById], references: [id])
+
+  @@index([status, priority])
+  @@index([incidentAt])
+  @@index([categoryId])
+  @@index([createdById])
+}
+
+model ReturnHistory {
+  id               Int       @id @default(autoincrement())
+  foundItemId      Int
+  lostReportId     Int?
+  returnedTo       String
+  phoneNumber      String
+  identityVerified Boolean
+  returnedById     Int
+  returnedAt       DateTime
+  remarks          String?
+  createdAt        DateTime  @default(now())
+  foundItem        FoundItem @relation(fields: [foundItemId], references: [id])
+  lostReport       LostReport? @relation(fields: [lostReportId], references: [id])
+  returnedBy       User      @relation(fields: [returnedById], references: [id])
+
+  @@index([foundItemId])
+  @@index([lostReportId])
+  @@index([returnedAt])
+}
+
+model ActivityLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  action     String
+  entity     String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([action, entity])
+  @@index([createdAt])
+}
