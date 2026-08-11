@@ -35,5 +35,21 @@ export const listLostReportsSchema = z.object({
   }),
 });
 
+export const exportLostReportsSchema = z.object({
+  query: z.object({
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(20),
+    search: z.string().trim().optional(),
+    categoryId: z.coerce.number().int().positive().optional(),
+    status: lostReportStatusSchema.optional(),
+    phoneNumber: z.string().trim().optional(),
+    brand: z.string().trim().optional(),
+    color: z.string().trim().optional(),
+    dateFrom: z.string().date().optional(),
+    dateTo: z.string().date().optional(),
+  }),
+});
+
 export type CreateLostReportInput = z.infer<typeof createLostReportSchema>['body'];
 export type ListLostReportsQuery = z.infer<typeof listLostReportsSchema>['query'];
+export type ExportLostReportsQuery = z.infer<typeof exportLostReportsSchema>['query'];

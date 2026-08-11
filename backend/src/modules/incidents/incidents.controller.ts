@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { HttpError } from '../../utils/http-error.js';
 import { activityService } from '../activity/activity.service.js';
 
-import type { ListIncidentsQuery } from './incidents.dto.js';
+import type { ExportIncidentsQuery, ListIncidentsQuery } from './incidents.dto.js';
 import { incidentsService } from './incidents.service.js';
 
 export const incidentsController = {
@@ -12,7 +12,7 @@ export const incidentsController = {
       throw new HttpError('Unauthorized', 401);
     }
 
-    const incident = await incidentsService.create(req.body, req.user.id);
+    const incident = await incidentsService.create(req.body, req.user.id, req.file);
 
     await activityService.logActivity({
       userId: req.user.id,
@@ -34,6 +34,14 @@ export const incidentsController = {
   async list(req: Request, res: Response): Promise<void> {
     const result = await incidentsService.list(req.query as unknown as ListIncidentsQuery);
     res.status(200).json(result);
+  },
+
+  async exportCsv(req: Request, res: Response): Promise<void> {
+    const csv = await incidentsService.exportIncidentsCsv(req.query as unknown as ExportIncidentsQuery);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="incidents-${Date.now()}.csv"`);
+    res.status(200).send(csv);
   },
 
   async updateStatus(req: Request, res: Response): Promise<void> {

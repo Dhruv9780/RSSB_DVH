@@ -4,7 +4,7 @@ import { HttpError } from '../../utils/http-error.js';
 import { activityService } from '../activity/activity.service.js';
 import { matchingService } from '../matching/matching.service.js';
 
-import type { ListLostReportsQuery } from './lost-reports.dto.js';
+import type { ExportLostReportsQuery, ListLostReportsQuery } from './lost-reports.dto.js';
 import { lostReportsService } from './lost-reports.service.js';
 
 export const lostReportsController = {
@@ -38,6 +38,14 @@ export const lostReportsController = {
   async list(req: Request, res: Response): Promise<void> {
     const result = await lostReportsService.list(req.query as unknown as ListLostReportsQuery);
     res.status(200).json(result);
+  },
+
+  async exportCsv(req: Request, res: Response): Promise<void> {
+    const csv = await lostReportsService.exportLostReportsCsv(req.query as unknown as ExportLostReportsQuery);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="lost-reports-${Date.now()}.csv"`);
+    res.status(200).send(csv);
   },
 
   async getById(req: Request, res: Response): Promise<void> {

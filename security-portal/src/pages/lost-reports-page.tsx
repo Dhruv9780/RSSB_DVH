@@ -27,19 +27,28 @@ import type { MatchingSuggestion } from '../types/api';
 import { toMediaUrl } from '../utils/media';
 
 const lostReportSchema = z.object({
-  personName: z.string().min(2),
-  phoneNumber: z.string().min(7),
-  itemName: z.string().min(2),
-  categoryId: z.coerce.number().int().positive().optional(),
+  personName: z.string().optional(),
+  phoneNumber: z.string().optional(),
+  itemName: z.string().optional(),
+  categoryId: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : value),
+    z.coerce.number().int().positive().optional(),
+  ),
   brand: z.string().optional(),
   color: z.string().optional(),
   description: z.string().optional(),
   specialIdentification: z.string().optional(),
-  approximateValue: z.coerce.number().nonnegative().optional(),
-  locationLostId: z.coerce.number().int().positive().optional(),
-  lostDate: z.string().date(),
-  lostTime: z.string().min(5),
-  status: z.enum(['OPEN', 'MATCHED', 'RETURNED', 'CLOSED']),
+  approximateValue: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : value),
+    z.coerce.number().nonnegative().optional(),
+  ),
+  locationLostId: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : value),
+    z.coerce.number().int().positive().optional(),
+  ),
+  lostDate: z.string().optional(),
+  lostTime: z.string().optional(),
+  status: z.enum(['OPEN', 'MATCHED', 'RETURNED', 'CLOSED']).optional(),
 });
 
 type LostReportForm = z.infer<typeof lostReportSchema>;
@@ -96,7 +105,23 @@ export const LostReportsPage = () => {
 
   const reportOptions = useMemo(() => reportsQuery.data?.reports ?? [], [reportsQuery.data?.reports]);
 
-  const onSubmit = form.handleSubmit((values) => createMutation.mutate(values));
+  const onSubmit = form.handleSubmit((values) =>
+    createMutation.mutate({
+      personName: values.personName?.trim() || 'Unknown',
+      phoneNumber: values.phoneNumber?.trim() || '0000000',
+      itemName: values.itemName?.trim() || 'Unknown Item',
+      categoryId: values.categoryId,
+      brand: values.brand?.trim() || undefined,
+      color: values.color?.trim() || undefined,
+      description: values.description?.trim() || undefined,
+      specialIdentification: values.specialIdentification?.trim() || undefined,
+      approximateValue: values.approximateValue,
+      locationLostId: values.locationLostId,
+      lostDate: values.lostDate || new Date().toISOString().slice(0, 10),
+      lostTime: values.lostTime || '12:00',
+      status: values.status ?? 'OPEN',
+    }),
+  );
 
   if (categoriesQuery.isLoading || locationsQuery.isLoading || reportsQuery.isLoading) {
     return <CircularProgress />;
@@ -120,6 +145,7 @@ export const LostReportsPage = () => {
             <TextField label="Phone Number" {...form.register('phoneNumber')} />
             <TextField label="Item Name" {...form.register('itemName')} />
             <TextField select label="Category" {...form.register('categoryId')}>
+              <MenuItem value="">None</MenuItem>
               {categoriesQuery.data?.map((category) => (
                 <MenuItem key={category.id} value={category.id}>
                   {category.name}
@@ -132,6 +158,7 @@ export const LostReportsPage = () => {
             <TextField label="Special Identification" {...form.register('specialIdentification')} multiline minRows={2} />
             <TextField label="Approx Value" type="number" {...form.register('approximateValue')} />
             <TextField select label="Location Lost" {...form.register('locationLostId')}>
+              <MenuItem value="">None</MenuItem>
               {locationsQuery.data?.map((location) => (
                 <MenuItem key={location.id} value={location.id}>
                   {location.name}

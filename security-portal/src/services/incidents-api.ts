@@ -13,6 +13,7 @@ export type CreateIncidentInput = {
   reporterName: string;
   reporterContact: string;
   status: 'OPEN';
+  image?: File;
 };
 
 export type ListIncidentsQuery = {
@@ -32,7 +33,27 @@ export type UpdateIncidentStatusInput = {
 
 export const incidentsApi = {
   async create(payload: CreateIncidentInput) {
-    const { data } = await httpClient.post<{ incident: Incident }>('/incidents', payload);
+    const formData = new FormData();
+
+    formData.append('title', payload.title);
+    if (payload.description) {
+      formData.append('description', payload.description);
+    }
+    if (payload.categoryId !== undefined) {
+      formData.append('categoryId', String(payload.categoryId));
+    }
+    formData.append('priority', payload.priority);
+    formData.append('location', payload.location);
+    formData.append('incidentDate', payload.incidentDate);
+    formData.append('incidentTime', payload.incidentTime);
+    formData.append('reporterName', payload.reporterName);
+    formData.append('reporterContact', payload.reporterContact);
+    formData.append('status', payload.status);
+    if (payload.image) {
+      formData.append('image', payload.image);
+    }
+
+    const { data } = await httpClient.post<{ incident: Incident }>('/incidents', formData);
     return data.incident;
   },
 

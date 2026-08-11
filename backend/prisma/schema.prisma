@@ -157,6 +157,7 @@ model Incident {
   incidentCode     String           @unique
   title            String
   description      String?
+  imagePath        String?
   categoryId       Int?
   priority         IncidentPriority @default(MEDIUM)
   location         String
@@ -181,6 +182,7 @@ model ReturnHistory {
   foundItemId      Int
   lostReportId     Int?
   returnedTo       String
+  receiverPhotoPath String?
   phoneNumber      String
   identityVerified Boolean
   returnedById     Int

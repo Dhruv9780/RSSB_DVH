@@ -3,10 +3,84 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { generateCode } from '../../utils/code-generator.js';
 
-import type { CreateFoundItemInput, ListFoundItemsQuery } from './found-items.dto.js';
+import type {
+  CreateFoundItemInput,
+  ExportFoundItemsQuery,
+  ListFoundItemsQuery,
+} from './found-items.dto.js';
 
 const combineDateAndTime = (dateString: string, timeString: string): Date => {
   return new Date(`${dateString}T${timeString}:00`);
+};
+
+const escapeCsv = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const text = String(value).replace(/"/g, '""');
+  return `"${text}"`;
+};
+
+const toFoundItemsCsv = (
+  rows: Array<{
+    id: number;
+    itemCode: string;
+    itemName: string;
+    description: string | null;
+    brand: string | null;
+    color: string | null;
+    foundAt: Date;
+    storageLocation: string;
+    status: string;
+    createdAt: Date;
+    category: { name: string };
+    locationFound: { name: string };
+    createdBy: { username: string; fullName: string };
+    images: { path: string }[];
+  }>,
+): string => {
+  const header = [
+    'id',
+    'itemCode',
+    'itemName',
+    'description',
+    'brand',
+    'color',
+    'category',
+    'locationFound',
+    'foundAt',
+    'storageLocation',
+    'status',
+    'imageCount',
+    'imagePaths',
+    'createdByUsername',
+    'createdByFullName',
+    'createdAt',
+  ].join(',');
+
+  const lines = rows.map((row) =>
+    [
+      escapeCsv(row.id),
+      escapeCsv(row.itemCode),
+      escapeCsv(row.itemName),
+      escapeCsv(row.description),
+      escapeCsv(row.brand),
+      escapeCsv(row.color),
+      escapeCsv(row.category.name),
+      escapeCsv(row.locationFound.name),
+      escapeCsv(row.foundAt.toISOString()),
+      escapeCsv(row.storageLocation),
+      escapeCsv(row.status),
+      escapeCsv(row.images.length),
+      escapeCsv(row.images.map((image) => image.path).join('; ')),
+      escapeCsv(row.createdBy.username),
+      escapeCsv(row.createdBy.fullName),
+      escapeCsv(row.createdAt.toISOString()),
+    ].join(','),
+  );
+
+  return [header, ...lines].join('\n');
 };
 
 export const foundItemsService = {
@@ -105,6 +179,70 @@ export const foundItemsService = {
         totalPages: Math.ceil(total / pageSize),
       },
     };
+  },
+
+  async exportFoundItemsCsv(query: ExportFoundItemsQuery) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+    const skip = (page - 1) * pageSize;
+
+    const where: Prisma.FoundItemWhereInput = {
+      ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.brand ? { brand: { contains: query.brand } } : {}),
+      ...(query.color ? { color: { contains: query.color } } : {}),
+      ...(query.dateFrom || query.dateTo
+        ? {
+            foundAt: {
+              ...(query.dateFrom ? { gte: new Date(`${query.dateFrom}T00:00:00`) } : {}),
+              ...(query.dateTo ? { lte: new Date(`${query.dateTo}T23:59:59`) } : {}),
+            },
+          }
+        : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { itemCode: { contains: query.search } },
+              { itemName: { contains: query.search } },
+              { description: { contains: query.search } },
+              { brand: { contains: query.search } },
+              { color: { contains: query.search } },
+            ],
+          }
+        : {}),
+    };
+
+    const items = await prisma.foundItem.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        locationFound: {
+          select: {
+            name: true,
+          },
+        },
+        createdBy: {
+          select: {
+            username: true,
+            fullName: true,
+          },
+        },
+        images: {
+          select: {
+            path: true,
+          },
+        },
+      },
+    });
+
+    return toFoundItemsCsv(items);
   },
 
   async getById(id: number) {

@@ -82,6 +82,7 @@ export type Incident = {
   incidentCode: string;
   title: string;
   description?: string | null;
+  imagePath?: string | null;
   priority: IncidentPriority;
   location: string;
   incidentAt: string;

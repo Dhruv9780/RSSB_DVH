@@ -5,7 +5,7 @@ import { uploadFoundItemImages } from '../../middleware/upload.middleware.js';
 import { validateRequest } from '../../middleware/validate.middleware.js';
 import { asyncHandler } from '../../utils/async-handler.js';
 
-import { createFoundItemSchema, listFoundItemsSchema } from './found-items.dto.js';
+import { createFoundItemSchema, exportFoundItemsSchema, listFoundItemsSchema } from './found-items.dto.js';
 import { foundItemsController } from './found-items.controller.js';
 
 const foundItemsRouter = Router();
@@ -13,6 +13,11 @@ const foundItemsRouter = Router();
 foundItemsRouter.use(authenticate);
 
 foundItemsRouter.get('/', validateRequest(listFoundItemsSchema), asyncHandler(foundItemsController.list));
+foundItemsRouter.get(
+  '/export.csv',
+  validateRequest(exportFoundItemsSchema),
+  asyncHandler(foundItemsController.exportCsv),
+);
 foundItemsRouter.get('/:id', asyncHandler(foundItemsController.getById));
 foundItemsRouter.post(
   '/:id/images',

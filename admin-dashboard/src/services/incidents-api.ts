@@ -50,4 +50,12 @@ export const incidentsApi = {
     const { data } = await httpClient.patch<{ incident: Incident }>(`/incidents/${incidentId}/status`, payload);
     return data.incident;
   },
+
+  async exportCsv(query: ListIncidentsQuery) {
+    const { data } = await httpClient.get<Blob>('/incidents/export.csv', {
+      params: query,
+      responseType: 'blob',
+    });
+    return data;
+  },
 };

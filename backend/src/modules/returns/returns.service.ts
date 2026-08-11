@@ -8,7 +8,7 @@ const combineDateAndTime = (dateString: string, timeString: string): Date => {
 };
 
 export const returnsService = {
-  async create(input: CreateReturnInput, returnedById: number) {
+  async create(input: CreateReturnInput, returnedById: number, receiverPhoto?: Express.Multer.File) {
     const foundItem = await prisma.foundItem.findUnique({
       where: { id: input.foundItemId },
       select: { id: true, status: true },
@@ -41,6 +41,7 @@ export const returnsService = {
           foundItemId: input.foundItemId,
           lostReportId: input.lostReportId,
           returnedTo: input.returnedTo,
+          receiverPhotoPath: receiverPhoto ? `/uploads/returns/${receiverPhoto.filename}` : undefined,
           phoneNumber: input.phoneNumber,
           identityVerified: input.identityVerified,
           returnedById,

@@ -4,9 +4,89 @@ import { prisma } from '../../lib/prisma.js';
 import { generateCode } from '../../utils/code-generator.js';
 
 import type { CreateLostReportInput, ListLostReportsQuery } from './lost-reports.dto.js';
+import type { ExportLostReportsQuery } from './lost-reports.dto.js';
 
 const combineDateAndTime = (dateString: string, timeString: string): Date => {
   return new Date(`${dateString}T${timeString}:00`);
+};
+
+const escapeCsv = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const text = String(value).replace(/"/g, '""');
+  return `"${text}"`;
+};
+
+const toLostReportsCsv = (
+  rows: Array<{
+    id: number;
+    reportCode: string;
+    personName: string;
+    phoneNumber: string;
+    itemName: string;
+    categoryId: number | null;
+    brand: string | null;
+    color: string | null;
+    description: string | null;
+    specialIdentification: string | null;
+    approximateValue: Prisma.Decimal | null;
+    locationLostId: number | null;
+    lostAt: Date;
+    status: string;
+    photoPath: string | null;
+    createdAt: Date;
+    category: { name: string } | null;
+    locationLost: { name: string } | null;
+    createdBy: { username: string; fullName: string };
+  }>,
+): string => {
+  const header = [
+    'id',
+    'reportCode',
+    'personName',
+    'phoneNumber',
+    'itemName',
+    'category',
+    'brand',
+    'color',
+    'description',
+    'specialIdentification',
+    'approximateValue',
+    'locationLost',
+    'lostAt',
+    'status',
+    'photoPath',
+    'createdByUsername',
+    'createdByFullName',
+    'createdAt',
+  ].join(',');
+
+  const lines = rows.map((row) =>
+    [
+      escapeCsv(row.id),
+      escapeCsv(row.reportCode),
+      escapeCsv(row.personName),
+      escapeCsv(row.phoneNumber),
+      escapeCsv(row.itemName),
+      escapeCsv(row.category?.name ?? ''),
+      escapeCsv(row.brand),
+      escapeCsv(row.color),
+      escapeCsv(row.description),
+      escapeCsv(row.specialIdentification),
+      escapeCsv(row.approximateValue?.toString() ?? ''),
+      escapeCsv(row.locationLost?.name ?? ''),
+      escapeCsv(row.lostAt.toISOString()),
+      escapeCsv(row.status),
+      escapeCsv(row.photoPath),
+      escapeCsv(row.createdBy.username),
+      escapeCsv(row.createdBy.fullName),
+      escapeCsv(row.createdAt.toISOString()),
+    ].join(','),
+  );
+
+  return [header, ...lines].join('\n');
 };
 
 export const lostReportsService = {
@@ -111,6 +191,66 @@ export const lostReportsService = {
         totalPages: Math.ceil(total / pageSize),
       },
     };
+  },
+
+  async exportLostReportsCsv(query: ExportLostReportsQuery) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+    const skip = (page - 1) * pageSize;
+
+    const where: Prisma.LostReportWhereInput = {
+      ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.phoneNumber ? { phoneNumber: { contains: query.phoneNumber } } : {}),
+      ...(query.brand ? { brand: { contains: query.brand } } : {}),
+      ...(query.color ? { color: { contains: query.color } } : {}),
+      ...(query.dateFrom || query.dateTo
+        ? {
+            lostAt: {
+              ...(query.dateFrom ? { gte: new Date(`${query.dateFrom}T00:00:00`) } : {}),
+              ...(query.dateTo ? { lte: new Date(`${query.dateTo}T23:59:59`) } : {}),
+            },
+          }
+        : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { reportCode: { contains: query.search } },
+              { itemName: { contains: query.search } },
+              { description: { contains: query.search } },
+              { personName: { contains: query.search } },
+              { phoneNumber: { contains: query.search } },
+            ],
+          }
+        : {}),
+    };
+
+    const reports = await prisma.lostReport.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        locationLost: {
+          select: {
+            name: true,
+          },
+        },
+        createdBy: {
+          select: {
+            username: true,
+            fullName: true,
+          },
+        },
+      },
+    });
+
+    return toLostReportsCsv(reports);
   },
 
   async getById(id: number) {

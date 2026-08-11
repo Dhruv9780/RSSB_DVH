@@ -27,16 +27,22 @@ import { foundItemsApi } from '../services/found-items-api';
 import { toMediaUrl } from '../utils/media';
 
 const foundItemSchema = z.object({
-  categoryId: z.coerce.number().int().positive(),
-  itemName: z.string().min(2),
+  categoryId: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : value),
+    z.coerce.number().int().positive().optional(),
+  ),
+  itemName: z.string().optional(),
   description: z.string().optional(),
   brand: z.string().optional(),
   color: z.string().optional(),
-  locationFoundId: z.coerce.number().int().positive(),
-  foundDate: z.string().date(),
-  foundTime: z.string().min(5),
-  storageLocation: z.string().min(2),
-  status: z.enum(['STORED', 'CLAIMED', 'RETURNED', 'ARCHIVED']),
+  locationFoundId: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : value),
+    z.coerce.number().int().positive().optional(),
+  ),
+  foundDate: z.string().optional(),
+  foundTime: z.string().optional(),
+  storageLocation: z.string().optional(),
+  status: z.enum(['STORED', 'CLAIMED', 'RETURNED', 'ARCHIVED']).optional(),
 });
 
 type FoundItemForm = z.infer<typeof foundItemSchema>;
@@ -91,7 +97,20 @@ export const FoundItemsPage = () => {
 
   const uploadOptions = useMemo(() => itemsQuery.data?.items ?? [], [itemsQuery.data?.items]);
 
-  const onSubmit = form.handleSubmit((values) => createMutation.mutate(values));
+  const onSubmit = form.handleSubmit((values) =>
+    createMutation.mutate({
+      categoryId: values.categoryId ?? categoriesQuery.data?.[0]?.id ?? 1,
+      itemName: values.itemName?.trim() || 'Unknown Item',
+      description: values.description?.trim() || undefined,
+      brand: values.brand?.trim() || undefined,
+      color: values.color?.trim() || undefined,
+      locationFoundId: values.locationFoundId ?? locationsQuery.data?.[0]?.id ?? 1,
+      foundDate: values.foundDate || new Date().toISOString().slice(0, 10),
+      foundTime: values.foundTime || '12:00',
+      storageLocation: values.storageLocation?.trim() || 'Not specified',
+      status: values.status ?? 'STORED',
+    }),
+  );
 
   if (categoriesQuery.isLoading || locationsQuery.isLoading || itemsQuery.isLoading) {
     return <CircularProgress />;
@@ -112,6 +131,7 @@ export const FoundItemsPage = () => {
 
           <Stack component="form" spacing={1.5} onSubmit={onSubmit}>
             <TextField select label="Category" {...form.register('categoryId')}>
+              <MenuItem value="">None</MenuItem>
               {categoriesQuery.data?.map((category) => (
                 <MenuItem key={category.id} value={category.id}>
                   {category.name}
@@ -123,6 +143,7 @@ export const FoundItemsPage = () => {
             <TextField label="Brand" {...form.register('brand')} />
             <TextField label="Color" {...form.register('color')} />
             <TextField select label="Location Found" {...form.register('locationFoundId')}>
+              <MenuItem value="">None</MenuItem>
               {locationsQuery.data?.map((location) => (
                 <MenuItem key={location.id} value={location.id}>
                   {location.name}

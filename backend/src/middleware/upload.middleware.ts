@@ -58,3 +58,21 @@ export const uploadLostReportPhoto = multer({
     fileSize: 10 * 1024 * 1024,
   },
 });
+
+export const uploadIncidentImage = multer({
+  storage: createStorage('incidents'),
+  fileFilter: imageFilter,
+  limits: {
+    files: 1,
+    fileSize: 10 * 1024 * 1024,
+  },
+});
+
+export const uploadReturnReceiverPhoto = multer({
+  storage: createStorage('returns'),
+  fileFilter: imageFilter,
+  limits: {
+    files: 1,
+    fileSize: 10 * 1024 * 1024,
+  },
+});

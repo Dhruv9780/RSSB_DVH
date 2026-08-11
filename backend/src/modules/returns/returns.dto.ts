@@ -6,7 +6,7 @@ export const createReturnSchema = z.object({
     lostReportId: z.coerce.number().int().positive().optional(),
     returnedTo: z.string().trim().min(2).max(120),
     phoneNumber: z.string().trim().min(7).max(20),
-    identityVerified: z.boolean(),
+    identityVerified: z.coerce.boolean(),
     returnDate: z.string().date(),
     returnTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
     remarks: z.string().trim().max(500).optional(),

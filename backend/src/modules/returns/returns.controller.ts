@@ -11,7 +11,7 @@ export const returnsController = {
       throw new HttpError('Unauthorized', 401);
     }
 
-    const returnEntry = await returnsService.create(req.body, req.user.id);
+    const returnEntry = await returnsService.create(req.body, req.user.id, req.file);
 
     await activityService.logActivity({
       userId: req.user.id,
@@ -21,6 +21,7 @@ export const returnsController = {
       metadata: {
         foundItemId: req.body.foundItemId,
         lostReportId: req.body.lostReportId,
+        receiverPhotoUploaded: Boolean(req.file),
       },
       ipAddress: req.ip,
       userAgent: req.get('user-agent') ?? undefined,

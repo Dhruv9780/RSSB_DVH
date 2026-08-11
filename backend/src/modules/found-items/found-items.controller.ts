@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { HttpError } from '../../utils/http-error.js';
 import { activityService } from '../activity/activity.service.js';
 
-import type { ListFoundItemsQuery } from './found-items.dto.js';
+import type { ExportFoundItemsQuery, ListFoundItemsQuery } from './found-items.dto.js';
 import { foundItemsService } from './found-items.service.js';
 
 export const foundItemsController = {
@@ -29,6 +29,14 @@ export const foundItemsController = {
   async list(req: Request, res: Response): Promise<void> {
     const result = await foundItemsService.list(req.query as unknown as ListFoundItemsQuery);
     res.status(200).json(result);
+  },
+
+  async exportCsv(req: Request, res: Response): Promise<void> {
+    const csv = await foundItemsService.exportFoundItemsCsv(req.query as unknown as ExportFoundItemsQuery);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="found-items-${Date.now()}.csv"`);
+    res.status(200).send(csv);
   },
 
   async getById(req: Request, res: Response): Promise<void> {

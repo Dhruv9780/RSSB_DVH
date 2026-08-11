@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Button, Checkbox, FormControlLabel, Grid2, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import { useState } from 'react';
 import { z } from 'zod';
 
 import { foundItemsApi } from '../services/found-items-api';
@@ -26,6 +27,7 @@ type ReturnForm = z.infer<typeof returnSchema>;
 
 export const ReturnsPage = () => {
   const queryClient = useQueryClient();
+  const [receiverPhoto, setReceiverPhoto] = useState<File | null>(null);
 
   const foundItemsQuery = useQuery({
     queryKey: ['found-items'],
@@ -50,6 +52,7 @@ export const ReturnsPage = () => {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['found-items'] });
       await queryClient.invalidateQueries({ queryKey: ['lost-reports'] });
+      setReceiverPhoto(null);
       form.reset({
         identityVerified: true,
         returnDate: new Date().toISOString().slice(0, 10),
@@ -58,7 +61,7 @@ export const ReturnsPage = () => {
     },
   });
 
-  const onSubmit = form.handleSubmit((values) => createMutation.mutate(values));
+  const onSubmit = form.handleSubmit((values) => createMutation.mutate({ ...values, receiverPhoto: receiverPhoto ?? undefined }));
 
   return (
     <Paper sx={{ p: 2, maxWidth: 760 }}>
@@ -110,6 +113,15 @@ export const ReturnsPage = () => {
         </Grid2>
 
         <TextField label="Remarks" multiline minRows={3} {...form.register('remarks')} />
+        <Button variant="outlined" component="label">
+          {receiverPhoto ? `Photo selected: ${receiverPhoto.name}` : 'Attach Receiver Photo (Optional)'}
+          <input
+            hidden
+            type="file"
+            accept="image/*"
+            onChange={(event) => setReceiverPhoto(event.target.files?.[0] ?? null)}
+          />
+        </Button>
         <Button type="submit" variant="contained" disabled={createMutation.isPending}>
           {createMutation.isPending ? 'Processing...' : 'Return Item'}
         </Button>

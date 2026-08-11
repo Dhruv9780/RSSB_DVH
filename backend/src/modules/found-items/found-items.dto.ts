@@ -31,5 +31,20 @@ export const listFoundItemsSchema = z.object({
   }),
 });
 
+export const exportFoundItemsSchema = z.object({
+  query: z.object({
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(20),
+    search: z.string().trim().optional(),
+    categoryId: z.coerce.number().int().positive().optional(),
+    status: foundItemStatusSchema.optional(),
+    brand: z.string().trim().optional(),
+    color: z.string().trim().optional(),
+    dateFrom: z.string().date().optional(),
+    dateTo: z.string().date().optional(),
+  }),
+});
+
 export type CreateFoundItemInput = z.infer<typeof createFoundItemSchema>['body'];
 export type ListFoundItemsQuery = z.infer<typeof listFoundItemsSchema>['query'];
+export type ExportFoundItemsQuery = z.infer<typeof exportFoundItemsSchema>['query'];

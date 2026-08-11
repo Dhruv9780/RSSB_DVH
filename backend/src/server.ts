@@ -8,6 +8,8 @@ const uploadRoots = [
   path.join(process.cwd(), 'uploads'),
   path.join(process.cwd(), 'uploads', 'found-items'),
   path.join(process.cwd(), 'uploads', 'lost-reports'),
+  path.join(process.cwd(), 'uploads', 'incidents'),
+  path.join(process.cwd(), 'uploads', 'returns'),
 ];
 
 for (const dir of uploadRoots) {

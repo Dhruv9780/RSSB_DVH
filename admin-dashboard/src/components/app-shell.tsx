@@ -1,6 +1,7 @@
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
+import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import ReportGmailerrorredOutlinedIcon from '@mui/icons-material/ReportGmailerrorredOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
@@ -11,12 +12,15 @@ import {
   AppBar,
   Box,
   Button,
+  CircularProgress,
   Drawer,
   IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Toolbar,
   Typography,
 } from '@mui/material';
@@ -25,6 +29,9 @@ import { useTheme } from '@mui/material/styles';
 import { useMediaQuery } from '@mui/material';
 
 import { PwaInstallButton } from './pwa-install-button';
+import { foundItemsApi } from '../services/found-items-api';
+import { incidentsApi } from '../services/incidents-api';
+import { lostReportsApi } from '../services/lost-reports-api';
 import { useAuth } from '../state/auth-context';
 import { useEffect, useState } from 'react';
 
@@ -46,7 +53,10 @@ export const AppShell = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const drawerOpen = isMobile ? mobileOpen : isDrawerOpen;
+  const exportMenuOpen = Boolean(exportAnchorEl);
 
   useEffect(() => {
     if (isMobile) {
@@ -65,6 +75,44 @@ export const AppShell = () => {
       return;
     }
     setIsDrawerOpen((prev) => !prev);
+  };
+
+  const triggerCsvDownload = (blob: Blob, filename: string) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  };
+
+  const handleExportCsv = async (dataset: 'incidents' | 'lost-reports' | 'found-items') => {
+    setIsExporting(true);
+    setExportAnchorEl(null);
+
+    try {
+      const query = { page: 1, pageSize: 20 };
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+      if (dataset === 'incidents') {
+        const blob = await incidentsApi.exportCsv(query);
+        triggerCsvDownload(blob, `incidents-page-1-${timestamp}.csv`);
+        return;
+      }
+
+      if (dataset === 'lost-reports') {
+        const blob = await lostReportsApi.exportCsv(query);
+        triggerCsvDownload(blob, `lost-reports-page-1-${timestamp}.csv`);
+        return;
+      }
+
+      const blob = await foundItemsApi.exportCsv(query);
+      triggerCsvDownload(blob, `found-items-page-1-${timestamp}.csv`);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -100,6 +148,24 @@ export const AppShell = () => {
           </Box>
           <Box display="flex" alignItems="center" gap={2}>
             <PwaInstallButton />
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={isExporting ? <CircularProgress size={14} /> : <DownloadOutlinedIcon />}
+              onClick={(event) => setExportAnchorEl(event.currentTarget)}
+              disabled={isExporting}
+            >
+              Export CSV
+            </Button>
+            <Menu
+              anchorEl={exportAnchorEl}
+              open={exportMenuOpen}
+              onClose={() => setExportAnchorEl(null)}
+            >
+              <MenuItem onClick={() => void handleExportCsv('incidents')}>Incidents</MenuItem>
+              <MenuItem onClick={() => void handleExportCsv('lost-reports')}>Lost Items</MenuItem>
+              <MenuItem onClick={() => void handleExportCsv('found-items')}>Found Items</MenuItem>
+            </Menu>
             <Typography variant="body2" color="text.secondary">
               {user?.fullName ?? user?.username}
             </Typography>

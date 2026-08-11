@@ -28,19 +28,19 @@ import { incidentsApi } from '../services/incidents-api';
 import type { IncidentPriority, IncidentStatus } from '../types/api';
 
 const incidentSchema = z.object({
-  title: z.string().trim().min(2),
+  title: z.string().trim().optional(),
   description: z.string().trim().optional(),
   categoryId: z.preprocess(
     (value) => (value === '' || value === null || value === undefined ? undefined : value),
     z.coerce.number().int().positive().optional(),
   ),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
-  location: z.string().trim().min(2),
-  incidentDate: z.string().date(),
-  incidentTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
-  reporterName: z.string().trim().min(2),
-  reporterContact: z.string().trim().min(7),
-  status: z.literal('OPEN').default('OPEN'),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
+  location: z.string().trim().optional(),
+  incidentDate: z.string().optional(),
+  incidentTime: z.string().optional(),
+  reporterName: z.string().trim().optional(),
+  reporterContact: z.string().trim().optional(),
+  status: z.literal('OPEN').optional(),
 });
 
 type IncidentForm = z.infer<typeof incidentSchema>;
@@ -63,6 +63,7 @@ export const IncidentsPage = () => {
   const queryClient = useQueryClient();
   const [createdIncidentCode, setCreatedIncidentCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [incidentImage, setIncidentImage] = useState<File | null>(null);
 
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | IncidentPriority>('ALL');
@@ -112,6 +113,7 @@ export const IncidentsPage = () => {
     onSuccess: async (incident) => {
       setCreatedIncidentCode(incident.incidentCode);
       setErrorMessage(null);
+      setIncidentImage(null);
       form.reset({
         priority: 'MEDIUM',
         incidentDate: new Date().toISOString().slice(0, 10),
@@ -138,7 +140,21 @@ export const IncidentsPage = () => {
     },
   });
 
-  const onSubmit = form.handleSubmit((values) => createMutation.mutate(values));
+  const onSubmit = form.handleSubmit((values) =>
+    createMutation.mutate({
+      title: values.title?.trim() || 'General Incident',
+      description: values.description?.trim() || undefined,
+      categoryId: values.categoryId,
+      priority: values.priority ?? 'MEDIUM',
+      location: values.location?.trim() || 'Not specified',
+      incidentDate: values.incidentDate || new Date().toISOString().slice(0, 10),
+      incidentTime: values.incidentTime || '12:00',
+      reporterName: values.reporterName?.trim() || 'Unknown',
+      reporterContact: values.reporterContact?.trim() || '0000000',
+      status: 'OPEN',
+      image: incidentImage ?? undefined,
+    }),
+  );
 
   if (categoriesQuery.isLoading || locationsQuery.isLoading || incidentsQuery.isLoading) {
     return <CircularProgress />;
@@ -194,6 +210,18 @@ export const IncidentsPage = () => {
               <TextField label="Incident Time" type="time" InputLabelProps={{ shrink: true }} {...form.register('incidentTime')} />
               <TextField label="Reporter Name" {...form.register('reporterName')} />
               <TextField label="Reporter Contact" {...form.register('reporterContact')} />
+              <Button variant="outlined" component="label">
+                {incidentImage ? `Image selected: ${incidentImage.name}` : 'Add Incident Image (Optional)'}
+                <input
+                  hidden
+                  accept="image/*"
+                  type="file"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    setIncidentImage(file);
+                  }}
+                />
+              </Button>
               <TextField label="Status" value="OPEN" disabled />
 
               <Button type="submit" variant="contained" disabled={createMutation.isPending}>
