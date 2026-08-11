@@ -30,6 +30,7 @@ import { z } from 'zod';
 
 import { catalogApi } from '../services/catalog-api';
 import { incidentsApi } from '../services/incidents-api';
+import { useAuth } from '../state/auth-context';
 import type { IncidentPriority, IncidentStatus } from '../types/api';
 
 const incidentSchema = z.object({
@@ -95,6 +96,7 @@ const getErrorMessage = (error: unknown) => {
 const incidentStatuses: IncidentStatus[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 
 export const IncidentsPage = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [createdIncidentCode, setCreatedIncidentCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -273,6 +275,77 @@ export const IncidentsPage = () => {
 
   if (categoriesQuery.isLoading || locationsQuery.isLoading || incidentsQuery.isLoading) {
     return <CircularProgress />;
+  }
+
+  // If SECURITY_SEWADAR, show only the incident submission form (full width)
+  if (user?.role === 'SECURITY_SEWADAR') {
+    return (
+      <Grid2 container spacing={2}>
+        <Grid2 size={{ xs: 12 }}>
+          <Paper sx={{ p: 2 }}>
+            <Stack spacing={1.5}>
+              <Typography variant="h5" fontWeight={700}>
+                Report Incident (Security)
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Report a new incident. Incident Id is generated automatically after submit.
+              </Typography>
+
+              {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
+              {createdIncidentCode ? (
+                <Alert severity="success">Incident created successfully: {createdIncidentCode}</Alert>
+              ) : null}
+
+              <Stack component="form" spacing={1.5} onSubmit={onSubmit}>
+                <TextField label="Title" {...form.register('title')} />
+                <TextField label="Description" multiline minRows={3} {...form.register('description')} />
+                <TextField select label="Category" {...form.register('categoryId')}>
+                  <MenuItem value="">None</MenuItem>
+                  {categoriesQuery.data?.map((category) => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField select label="Priority" {...form.register('priority')}>
+                  <MenuItem value="LOW">LOW</MenuItem>
+                  <MenuItem value="MEDIUM">MEDIUM</MenuItem>
+                  <MenuItem value="HIGH">HIGH</MenuItem>
+                  <MenuItem value="CRITICAL">CRITICAL</MenuItem>
+                </TextField>
+                <TextField select label="Location" {...form.register('location')}>
+                  <MenuItem value="">None</MenuItem>
+                  {locationsQuery.data?.map((location) => (
+                    <MenuItem key={location.id} value={location.name}>
+                      {location.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField label="Incident Date" type="date" InputLabelProps={{ shrink: true }} {...form.register('incidentDate')} />
+                <TextField label="Incident Time" type="time" InputLabelProps={{ shrink: true }} {...form.register('incidentTime')} />
+                <TextField label="Reporter Name" {...form.register('reporterName')} />
+                <TextField label="Reporter Contact" {...form.register('reporterContact')} />
+                <Button variant="outlined" component="label">
+                  {incidentImage ? `Image selected: ${incidentImage.name}` : 'Add Incident Image (Optional)'}
+                  <input
+                    hidden
+                    accept="image/*"
+                    type="file"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+                      setIncidentImage(file);
+                    }}
+                  />
+                </Button>
+                <Button type="submit" variant="contained" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? 'Submitting...' : 'Create Incident'}
+                </Button>
+              </Stack>
+            </Stack>
+          </Paper>
+        </Grid2>
+      </Grid2>
+    );
   }
 
   return (

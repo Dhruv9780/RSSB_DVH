@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useAuth } from '../state/auth-context';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -48,9 +49,11 @@ const foundItemSchema = z.object({
 type FoundItemForm = z.infer<typeof foundItemSchema>;
 
 export const FoundItemsPage = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [uploadItemId, setUploadItemId] = useState<number | ''>('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [createFiles, setCreateFiles] = useState<File[]>([]);
 
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
@@ -76,13 +79,18 @@ export const FoundItemsPage = () => {
 
   const createMutation = useMutation({
     mutationFn: foundItemsApi.create,
-    onSuccess: async () => {
+    onSuccess: async (item) => {
       await queryClient.invalidateQueries({ queryKey: ['found-items'] });
       form.reset({
         status: 'STORED',
         foundDate: new Date().toISOString().slice(0, 10),
         foundTime: '12:00',
       });
+      // If files were attached during create, upload them now using created item id
+      if (createFiles.length > 0 && item?.id) {
+        uploadMutation.mutate({ itemId: item.id, files: createFiles });
+        setCreateFiles([]);
+      }
     },
   });
 
@@ -114,6 +122,67 @@ export const FoundItemsPage = () => {
 
   if (categoriesQuery.isLoading || locationsQuery.isLoading || itemsQuery.isLoading) {
     return <CircularProgress />;
+  }
+
+  // If SECURITY_SEWADAR, show only the submission form with optional images
+  if (user?.role === 'SECURITY_SEWADAR') {
+    return (
+      <Grid2 container spacing={2}>
+        <Grid2 size={{ xs: 12 }}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" mb={2}>
+              Add Found Item (Security)
+            </Typography>
+            {createMutation.isError ? (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                Failed to create found item.
+              </Alert>
+            ) : null}
+
+            <Stack component="form" spacing={1.5} onSubmit={onSubmit}>
+              <TextField select fullWidth label="Category" {...form.register('categoryId')}>
+                <MenuItem value="">None</MenuItem>
+                {categoriesQuery.data?.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField label="Item Name" {...form.register('itemName')} />
+              <TextField label="Description" {...form.register('description')} multiline minRows={2} />
+              <TextField label="Brand" {...form.register('brand')} />
+              <TextField label="Color" {...form.register('color')} />
+              <TextField select fullWidth label="Location Found" {...form.register('locationFoundId')}>
+                <MenuItem value="">None</MenuItem>
+                {locationsQuery.data?.map((location) => (
+                  <MenuItem key={location.id} value={location.id}>
+                    {location.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField label="Found Date" type="date" InputLabelProps={{ shrink: true }} {...form.register('foundDate')} />
+              <TextField label="Found Time" type="time" InputLabelProps={{ shrink: true }} {...form.register('foundTime')} />
+              <TextField label="Storage Location" {...form.register('storageLocation')} />
+              <TextField select label="Status" {...form.register('status')}>
+                <MenuItem value="STORED">STORED</MenuItem>
+                <MenuItem value="CLAIMED">CLAIMED</MenuItem>
+                <MenuItem value="RETURNED">RETURNED</MenuItem>
+                <MenuItem value="ARCHIVED">ARCHIVED</MenuItem>
+              </TextField>
+
+              <Button variant="outlined" component="label">
+                Attach Images (optional)
+                <input hidden type="file" accept="image/*" multiple onChange={(e) => setCreateFiles(Array.from(e.target.files ?? []))} />
+              </Button>
+
+              <Button type="submit" variant="contained" disabled={createMutation.isPending}>
+                {createMutation.isPending ? 'Saving...' : 'Create Found Item'}
+              </Button>
+            </Stack>
+          </Paper>
+        </Grid2>
+      </Grid2>
+    );
   }
 
   return (

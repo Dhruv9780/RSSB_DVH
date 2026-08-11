@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useAuth } from '../state/auth-context';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -54,10 +55,12 @@ const lostReportSchema = z.object({
 type LostReportForm = z.infer<typeof lostReportSchema>;
 
 export const LostReportsPage = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [suggestions, setSuggestions] = useState<MatchingSuggestion[]>([]);
   const [uploadReportId, setUploadReportId] = useState<number | ''>('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [createPhotoFile, setCreatePhotoFile] = useState<File | null>(null);
 
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
@@ -91,6 +94,11 @@ export const LostReportsPage = () => {
         lostDate: new Date().toISOString().slice(0, 10),
         lostTime: '12:00',
       });
+      // If user attached a photo during create, upload it now
+      if (createPhotoFile && data.report?.id) {
+        uploadMutation.mutate({ reportId: data.report.id, file: createPhotoFile });
+        setCreatePhotoFile(null);
+      }
     },
   });
 
@@ -125,6 +133,64 @@ export const LostReportsPage = () => {
 
   if (categoriesQuery.isLoading || locationsQuery.isLoading || reportsQuery.isLoading) {
     return <CircularProgress />;
+  }
+
+  // If the user is a security sewadar, show only the submission form (full width)
+  if (user?.role === 'SECURITY_SEWADAR') {
+    return (
+      <Grid2 container spacing={2}>
+        <Grid2 size={{ xs: 12 }}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" mb={2}>
+              Report Lost Item (Security)
+            </Typography>
+            {createMutation.isError ? (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                Failed to create lost report.
+              </Alert>
+            ) : null}
+
+            <Stack component="form" spacing={1.5} onSubmit={onSubmit}>
+              <TextField label="Person Name" {...form.register('personName')} />
+              <TextField label="Phone Number" {...form.register('phoneNumber')} />
+              <TextField label="Item Name" {...form.register('itemName')} />
+              <TextField select fullWidth label="Category" {...form.register('categoryId')}>
+                <MenuItem value="">None</MenuItem>
+                {categoriesQuery.data?.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField label="Brand" {...form.register('brand')} />
+              <TextField label="Color" {...form.register('color')} />
+              <TextField label="Description" {...form.register('description')} multiline minRows={2} />
+              <TextField label="Special Identification" {...form.register('specialIdentification')} multiline minRows={2} />
+              <TextField label="Approx Value" type="number" {...form.register('approximateValue')} />
+              <TextField select fullWidth label="Location Lost" {...form.register('locationLostId')}>
+                <MenuItem value="">None</MenuItem>
+                {locationsQuery.data?.map((location) => (
+                  <MenuItem key={location.id} value={location.id}>
+                    {location.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField label="Lost Date" type="date" InputLabelProps={{ shrink: true }} {...form.register('lostDate')} />
+              <TextField label="Lost Time" type="time" InputLabelProps={{ shrink: true }} {...form.register('lostTime')} />
+
+              <Button variant="outlined" component="label">
+                Attachment (optional)
+                <input hidden type="file" accept="image/*" onChange={(e) => setCreatePhotoFile(e.target.files?.[0] ?? null)} />
+              </Button>
+
+              <Button type="submit" variant="contained" disabled={createMutation.isPending}>
+                {createMutation.isPending ? 'Saving...' : 'Create Lost Report'}
+              </Button>
+            </Stack>
+          </Paper>
+        </Grid2>
+      </Grid2>
+    );
   }
 
   return (
