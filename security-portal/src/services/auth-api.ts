@@ -4,7 +4,10 @@ import { httpClient } from './http-client';
 
 export const authApi = {
   async login(payload: { username: string; password: string }) {
-    const { data } = await httpClient.post<LoginResponse>('/auth/login', payload);
+    const { data } = await httpClient.post<LoginResponse>('/auth/login', {
+      ...payload,
+      securityPortal: true,
+    });
     return data;
   },
 

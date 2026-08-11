@@ -161,11 +161,11 @@ export const LostReportsPage = () => {
 
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} mb={2}>
             <TextField
+              fullWidth
               select
               label="Report for Photo Upload"
               value={uploadReportId}
               onChange={(e) => setUploadReportId(Number(e.target.value))}
-              sx={{ minWidth: 260 }}
             >
               {reportOptions.map((report) => (
                 <MenuItem key={report.id} value={report.id}>

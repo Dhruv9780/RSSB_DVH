@@ -61,13 +61,13 @@ export const ActivityPage = () => {
       <Paper sx={{ p: 2 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
+            fullWidth
             label="Action filter"
             value={action}
             onChange={(event) => setAction(event.target.value)}
-            sx={{ minWidth: 240 }}
           />
 
-          <FormControl sx={{ minWidth: 240 }}>
+          <FormControl fullWidth>
             <InputLabel id="entity-filter-label">Entity</InputLabel>
             <Select
               labelId="entity-filter-label"

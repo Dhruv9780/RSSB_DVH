@@ -74,6 +74,11 @@ export const IncidentsPage = () => {
     queryFn: catalogApi.getCategories,
   });
 
+  const locationsQuery = useQuery({
+    queryKey: ['locations'],
+    queryFn: catalogApi.getLocations,
+  });
+
   const listQueryKey = useMemo(
     () => ['incidents', search, priorityFilter, statusFilter, categoryFilter],
     [search, priorityFilter, statusFilter, categoryFilter],
@@ -135,7 +140,7 @@ export const IncidentsPage = () => {
 
   const onSubmit = form.handleSubmit((values) => createMutation.mutate(values));
 
-  if (categoriesQuery.isLoading || incidentsQuery.isLoading) {
+  if (categoriesQuery.isLoading || locationsQuery.isLoading || incidentsQuery.isLoading) {
     return <CircularProgress />;
   }
 
@@ -177,7 +182,14 @@ export const IncidentsPage = () => {
                 <MenuItem value="CRITICAL">CRITICAL</MenuItem>
               </TextField>
 
-              <TextField label="Location" {...form.register('location')} />
+              <TextField select label="Location" {...form.register('location')}>
+                <MenuItem value="">None</MenuItem>
+                {locationsQuery.data?.map((location) => (
+                  <MenuItem key={location.id} value={location.name}>
+                    {location.name}
+                  </MenuItem>
+                ))}
+              </TextField>
               <TextField label="Incident Date" type="date" InputLabelProps={{ shrink: true }} {...form.register('incidentDate')} />
               <TextField label="Incident Time" type="time" InputLabelProps={{ shrink: true }} {...form.register('incidentTime')} />
               <TextField label="Reporter Name" {...form.register('reporterName')} />
@@ -201,14 +213,14 @@ export const IncidentsPage = () => {
 
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
               <TextField
+                fullWidth
                 label="Search"
                 placeholder="Code, title, location, reporter"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                sx={{ minWidth: 220 }}
               />
 
-              <FormControl sx={{ minWidth: 160 }}>
+              <FormControl fullWidth>
                 <InputLabel id="incident-priority-filter">Priority</InputLabel>
                 <Select
                   labelId="incident-priority-filter"
@@ -224,7 +236,7 @@ export const IncidentsPage = () => {
                 </Select>
               </FormControl>
 
-              <FormControl sx={{ minWidth: 160 }}>
+              <FormControl fullWidth>
                 <InputLabel id="incident-status-filter">Status</InputLabel>
                 <Select
                   labelId="incident-status-filter"
@@ -240,7 +252,7 @@ export const IncidentsPage = () => {
                 </Select>
               </FormControl>
 
-              <FormControl sx={{ minWidth: 200 }}>
+              <FormControl fullWidth>
                 <InputLabel id="incident-category-filter">Category</InputLabel>
                 <Select
                   labelId="incident-category-filter"
@@ -296,7 +308,7 @@ export const IncidentsPage = () => {
                     <TableCell>{incident.reporterName}</TableCell>
                     <TableCell>{new Date(incident.incidentAt).toLocaleString()}</TableCell>
                     <TableCell>
-                      <FormControl size="small" sx={{ minWidth: 140 }}>
+                      <FormControl size="small" fullWidth>
                         <Select
                           value={incident.status}
                           onChange={(event) =>

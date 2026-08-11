@@ -169,13 +169,13 @@ export const UsersPage = () => {
       <Paper sx={{ p: 2 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
+            fullWidth
             label="Search user"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            sx={{ minWidth: 260 }}
           />
 
-          <FormControl sx={{ minWidth: 180 }}>
+          <FormControl fullWidth>
             <InputLabel id="role-filter-label">Role</InputLabel>
             <Select
               labelId="role-filter-label"
@@ -191,7 +191,7 @@ export const UsersPage = () => {
             </Select>
           </FormControl>
 
-          <FormControl sx={{ minWidth: 180 }}>
+          <FormControl fullWidth>
             <InputLabel id="status-filter-label">Status</InputLabel>
             <Select
               labelId="status-filter-label"

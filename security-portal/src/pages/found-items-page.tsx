@@ -153,11 +153,11 @@ export const FoundItemsPage = () => {
 
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} mb={2}>
             <TextField
+              fullWidth
               select
               label="Item for Image Upload"
               value={uploadItemId}
               onChange={(e) => setUploadItemId(Number(e.target.value))}
-              sx={{ minWidth: 260 }}
             >
               {uploadOptions.map((item) => (
                 <MenuItem key={item.id} value={item.id}>

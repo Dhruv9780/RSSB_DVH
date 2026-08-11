@@ -248,14 +248,14 @@ export const IncidentsPage = () => {
 
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField
+              fullWidth
               label="Search"
               placeholder="Code, title, location, reporter"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              sx={{ minWidth: 240 }}
             />
 
-            <FormControl sx={{ minWidth: 180 }}>
+            <FormControl fullWidth>
               <InputLabel id="incident-priority-filter">Priority</InputLabel>
               <Select
                 labelId="incident-priority-filter"
@@ -271,7 +271,7 @@ export const IncidentsPage = () => {
               </Select>
             </FormControl>
 
-            <FormControl sx={{ minWidth: 180 }}>
+            <FormControl fullWidth>
               <InputLabel id="incident-status-filter">Status</InputLabel>
               <Select
                 labelId="incident-status-filter"
@@ -287,7 +287,7 @@ export const IncidentsPage = () => {
               </Select>
             </FormControl>
 
-            <FormControl sx={{ minWidth: 220 }}>
+            <FormControl fullWidth>
               <InputLabel id="incident-category-filter">Category</InputLabel>
               <Select
                 labelId="incident-category-filter"
@@ -343,7 +343,7 @@ export const IncidentsPage = () => {
                   <TableCell>{incident.reporterName}</TableCell>
                   <TableCell>{new Date(incident.incidentAt).toLocaleString()}</TableCell>
                   <TableCell>
-                    <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <FormControl size="small" fullWidth>
                       <Select
                         value={incident.status}
                         onChange={(event) =>
