@@ -1,3 +1,0 @@
-[assets]
-directory = "./dist"   # ← path to your static files folder
-binding = "ASSETS"      # optional, only if you reference assets in Worker code
