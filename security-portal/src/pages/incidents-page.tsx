@@ -5,6 +5,8 @@ import {
   CircularProgress,
   FormControl,
   Grid2,
+  IconButton,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Paper,
@@ -16,10 +18,13 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import MicOutlinedIcon from '@mui/icons-material/MicOutlined';
+import StopCircleOutlinedIcon from '@mui/icons-material/StopCircleOutlined';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -45,6 +50,36 @@ const incidentSchema = z.object({
 
 type IncidentForm = z.infer<typeof incidentSchema>;
 
+type SpeechRecognitionResultLike = {
+  transcript: string;
+};
+
+type SpeechRecognitionAlternativeLike = {
+  0: SpeechRecognitionResultLike;
+};
+
+type SpeechRecognitionResultLikeContainer = SpeechRecognitionAlternativeLike & {
+  isFinal: boolean;
+};
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLikeContainer>;
+};
+
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
 const getErrorMessage = (error: unknown) => {
   if (
     typeof error === 'object' &&
@@ -64,6 +99,17 @@ export const IncidentsPage = () => {
   const [createdIncidentCode, setCreatedIncidentCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [incidentImage, setIncidentImage] = useState<File | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const dictationBaseRef = useRef('');
+  const dictatedFinalRef = useRef('');
+
+  const speechRecognitionCtor =
+    (window as Window & { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor })
+      .SpeechRecognition ??
+    (window as Window & { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor })
+      .webkitSpeechRecognition;
+  const isSpeechSupported = Boolean(speechRecognitionCtor);
 
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | IncidentPriority>('ALL');
@@ -156,6 +202,75 @@ export const IncidentsPage = () => {
     }),
   );
 
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+    };
+  }, []);
+
+  const handleVoiceInputToggle = () => {
+    if (!speechRecognitionCtor) {
+      setErrorMessage('Voice input is not supported in this browser.');
+      return;
+    }
+
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    const recognition = new speechRecognitionCtor();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+
+    dictationBaseRef.current = form.getValues('description')?.trim() ?? '';
+    dictatedFinalRef.current = '';
+
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
+      let finalChunk = '';
+      let interimChunk = '';
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const transcript = event.results[i][0].transcript.trim();
+        if (!transcript) {
+          continue;
+        }
+
+        if (event.results[i].isFinal) {
+          finalChunk = `${finalChunk} ${transcript}`.trim();
+        } else {
+          interimChunk = `${interimChunk} ${transcript}`.trim();
+        }
+      }
+
+      if (finalChunk) {
+        dictatedFinalRef.current = `${dictatedFinalRef.current} ${finalChunk}`.trim();
+      }
+
+      const nextDescription = [dictationBaseRef.current, dictatedFinalRef.current, interimChunk]
+        .filter(Boolean)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      form.setValue('description', nextDescription, { shouldDirty: true });
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    setIsListening(true);
+    recognition.start();
+  };
+
   if (categoriesQuery.isLoading || locationsQuery.isLoading || incidentsQuery.isLoading) {
     return <CircularProgress />;
   }
@@ -180,7 +295,30 @@ export const IncidentsPage = () => {
             <Stack component="form" spacing={1.5} onSubmit={onSubmit}>
               <TextField label="Incident Id (Auto Generated)" value="Generated on submit" disabled />
               <TextField label="Title" {...form.register('title')} />
-              <TextField label="Description" multiline minRows={3} {...form.register('description')} />
+              <TextField
+                label="Description"
+                multiline
+                minRows={3}
+                {...form.register('description')}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip title={isSpeechSupported ? (isListening ? 'Stop voice input' : 'Voice to text') : 'Voice input not supported'}>
+                        <span>
+                          <IconButton
+                            edge="end"
+                            onClick={handleVoiceInputToggle}
+                            color={isListening ? 'error' : 'default'}
+                            disabled={!isSpeechSupported}
+                          >
+                            {isListening ? <StopCircleOutlinedIcon /> : <MicOutlinedIcon />}
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </InputAdornment>
+                  ),
+                }}
+              />
 
               <TextField select label="Category" {...form.register('categoryId')}>
                 <MenuItem value="">None</MenuItem>
