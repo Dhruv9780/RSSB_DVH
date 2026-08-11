@@ -1,5 +1,3 @@
-name = "rssb-admin-dashboard"
-compatibility_date = "2026-01-01"
-
-# Directory containing the built static assets (Vite output)
-assets = { directory = "./dist", include = ["**/*"], exclude = ["**/.git/**"] }
+[assets]
+directory = "./dist"   # ← path to your static files folder
+binding = "ASSETS"      # optional, only if you reference assets in Worker code
