@@ -1,0 +1,6 @@
+name = "rssb-security-portal"
+compatibility_date = "2026-01-01"
+type = "javascript"
+
+# Directory containing the built static assets (Vite output)
+assets = { directory = "./dist", include = ["**/*"], exclude = ["**/.git/**"] }
