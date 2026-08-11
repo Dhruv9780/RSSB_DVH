@@ -7,6 +7,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 
 import { authApi } from '../services/auth-api';
+import { PwaInstallButton } from '../components/pwa-install-button';
 import { useAuth } from '../state/auth-context';
 
 const loginSchema = z.object({
@@ -82,9 +83,12 @@ export const LoginPage = () => {
             error={Boolean(form.formState.errors.password)}
             helperText={form.formState.errors.password?.message}
           />
-          <Button type="submit" variant="contained" size="large" disabled={loginMutation.isPending}>
-            {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
-          </Button>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <PwaInstallButton />
+            <Button type="submit" variant="contained" size="large" disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
+            </Button>
+          </Stack>
         </Stack>
       </Paper>
     </Box>

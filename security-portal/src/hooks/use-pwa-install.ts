@@ -76,7 +76,7 @@ export const usePwaInstall = () => {
   }, [deferredPrompt]);
 
   return {
-    canInstall: Boolean(deferredPrompt) && !isInstalled,
+    canInstall: !isInstalled,
     isInstalled,
     installApp,
   };
